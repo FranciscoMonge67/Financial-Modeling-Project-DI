@@ -17,6 +17,9 @@ e vê como a carteira desse perfil se teria comportado desde 2011 contra o seu b
 - **Estatísticas:** retorno e volatilidade anuais, Sharpe, information ratio, alpha, beta, máximo drawdown e turnover,
   para 2011-2026, 2011-2018 e 2019-2026, com o satélite fixo (caso base) ou adaptativo.
 - **Alocação atual:** core por ETF, satélite (e as ações escolhidas) e T-bills, e a evolução dos pesos ao longo do tempo.
+- **Simulador "e se tivesse investido?":** escolhe-se um montante e um mês de entrada (entre o início do backtest e o
+  último mês com dados) e a app mostra quanto valeria hoje com a estratégia do perfil e com o benchmark, em € e em %,
+  com o gráfico da evolução. Usa só os retornos históricos de `data/returns.csv`, sem custos nem impostos.
 - **Comparação dos três perfis.**
 
 ## A estratégia, em resumo

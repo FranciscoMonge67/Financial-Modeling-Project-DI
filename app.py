@@ -192,9 +192,13 @@ h1, h2, h3 {{ letter-spacing: -0.02em; }}
   background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)), {PANEL};
   border: 1px solid {GRID}; border-radius: 16px; padding: 1.1rem 1.3rem; margin-bottom: 0.8rem;
 }}
-.kpi {{ min-height: 150px; }}
+.kpi {{ height: 168px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }}
+.kpi.short {{ height: 118px; }}
+.kpi .kpi-label {{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1.2em; }}
+.kpi .kpi-value {{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+.kpi .kpi-delta {{ display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }}
 .glow {{ box-shadow: 0 0 0 1px rgba(0,240,255,0.25), 0 0 32px rgba(0,240,255,0.10); }}
-.kpi-label {{ color: {MUTED}; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; }}
+.kpi-label {{ color: {MUTED}; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; }}
 .kpi-value {{ color: {TEXT}; font-size: 1.75rem; font-weight: 700; margin-top: 0.15rem; }}
 .kpi-delta {{ color: {MUTED}; font-size: 0.82rem; margin-top: 0.1rem; }}
 .kpi-delta b.up {{ color: #4ADE80; }} .kpi-delta b.down {{ color: #FB7185; }}
@@ -218,7 +222,7 @@ div[data-testid="stForm"] {{ border: 1px solid {GRID}; border-radius: 16px; back
 
 
 def kpi(label, value, delta_html=''):
-    cls = 'card kpi' if delta_html else 'card'
+    cls = 'card kpi' if delta_html else 'card kpi short'   # todas as caixas da mesma linha com o mesmo tamanho
     return (f'<div class="{cls}"><div class="kpi-label">{label}</div><div class="kpi-value">{value}</div>'
             f'<div class="kpi-delta">{delta_html}</div></div>')
 
@@ -353,9 +357,9 @@ def screen_dashboard(returns, turnover, weights, allocation, meta):
     k[0].markdown(kpi('Retorno anual', pct(m['Retorno anual']), vs(m['Retorno anual'], mb['Retorno anual'], pct, name=blabel)), unsafe_allow_html=True)
     k[1].markdown(kpi('Volatilidade', pct(m['Volatilidade anual']), vs(m['Volatilidade anual'], mb['Volatilidade anual'], pct, False, blabel)), unsafe_allow_html=True)
     k[2].markdown(kpi('Sharpe', num(m['Sharpe']), vs(m['Sharpe'], mb['Sharpe'], num, name=blabel)), unsafe_allow_html=True)
-    k[3].markdown(kpi('Information ratio', num(m['Information ratio']), f'face ao {blabel.lower()}'), unsafe_allow_html=True)
-    k[4].markdown(kpi('Máx. drawdown', pct(m['Máx. drawdown']), vs(m['Máx. drawdown'], mb['Máx. drawdown'], pct, name=blabel)), unsafe_allow_html=True)
-    k[5].markdown(kpi('Turnover mensal', pct(t.mean()), f'≈ {num(12 * t.mean(), 1)}× a carteira por ano'), unsafe_allow_html=True)
+    k[3].markdown(kpi('Info. ratio', num(m['Information ratio']), f'face ao {blabel.lower()}'), unsafe_allow_html=True)
+    k[4].markdown(kpi('Drawdown máx.', pct(m['Máx. drawdown']), vs(m['Máx. drawdown'], mb['Máx. drawdown'], pct, name=blabel)), unsafe_allow_html=True)
+    k[5].markdown(kpi('Turnover mês', pct(t.mean()), f'≈ {num(12 * t.mean(), 1)}× a carteira por ano'), unsafe_allow_html=True)
 
     tab1, tab2, tab3, tab4 = st.tabs(['📈  Performance', '📊  Estatísticas', '🧩  Alocação atual', '⚖️  Comparar perfis'])
 
@@ -504,6 +508,8 @@ def screen_dashboard(returns, turnover, weights, allocation, meta):
         st.plotly_chart(base_layout(fig, 340, yfmt='.0%'), **FULL, config={'displayModeBar': False})
         st.caption('Pesos na carteira total no início de cada mês. Acima de 100% = parte do core financiada com empréstimo.')
 
+        simulator(returns, p, version, blabel)
+
     with tab4:
         st.markdown(f'##### Os três perfis, {period}')
         rows = []
@@ -533,6 +539,52 @@ def screen_dashboard(returns, turnover, weights, allocation, meta):
                 st.session_state.final = q
                 st.session_state.changed = q != sug
                 st.rerun()
+
+
+def eur(x):
+    return f'{x:,.0f} €'.replace(',', ' ')
+
+
+def simulator(returns, p, version, blabel):
+    # "E se tivesse investido?": só com os retornos históricos já exportados (data/returns.csv)
+    st.markdown('##### Simulador: e se tivesses investido no passado?')
+    months = list(returns.index)
+    labels = [f'{d:%m/%Y}' for d in months]
+    last = months[-1]
+    c1, c2 = st.columns([1, 2], gap='large')
+    amount = c1.number_input('Montante investido (€)', min_value=100, max_value=10_000_000, value=10_000, step=500)
+    start_label = c2.select_slider('Investido no início de', options=labels[:-1], value=labels[0])
+    start = months[labels.index(start_label)]
+    sel = returns.index >= start
+    series = [('Estratégia', returns.loc[sel, f'strat_{p}_{version}'], C_STRAT, 'solid'),
+              (blabel, returns.loc[sel, f'bench_{p}'], C_BENCH, 'dash')]
+    end_label = f'{last:%m/%Y}'
+    n_years = sel.sum() / 12
+    res = {}
+    for name, r, _, _ in series:
+        final = amount * np.exp(r.sum())
+        res[name] = (final, final - amount, final / amount - 1, (final / amount) ** (1 / n_years) - 1)
+    fs, gs, ps, cs = res['Estratégia']
+    fb, gb, pb, cb = res[blabel]
+    k = st.columns(4)
+    k[0].markdown(kpi(f'Valor no fim de {end_label}', eur(fs), vs(fs, fb, eur, name=blabel)), unsafe_allow_html=True)
+    k[1].markdown(kpi('Ganho em €', ('+' if gs >= 0 else '') + eur(gs), vs(gs, gb, eur, name=blabel)), unsafe_allow_html=True)
+    k[2].markdown(kpi('Ganho em %', ('+' if ps >= 0 else '') + pct(ps), vs(ps, pb, pct, name=blabel)), unsafe_allow_html=True)
+    k[3].markdown(kpi('Retorno anual', pct(cs), f'em {num(n_years, 1)} anos · {blabel}: {pct(cb)}'), unsafe_allow_html=True)
+    fig = go.Figure()
+    for name, r, color, dash in series:
+        w = amount * wealth_index(r)
+        fig.add_trace(go.Scatter(x=L(w.index), y=L(w), name=name, mode='lines',
+                                 line=dict(color=color, width=2.4 if name == 'Estratégia' else 2, dash=dash),
+                                 hovertemplate='%{y:,.0f} €<extra>' + name + '</extra>'))
+    fig.add_hline(y=amount, line=dict(color=MUTED, width=1, dash='dot'))
+    base_layout(fig, 340, ytitle='Valor da carteira (€)')
+    fig.update_yaxes(tickformat=',.0f', rangemode='normal')
+    fig.update_layout(separators=', ')                 # 30 000 € (decimal com vírgula, milhares com espaço)
+    st.plotly_chart(fig, **FULL, config={'displayModeBar': False})
+    st.caption(f'Simulação com os retornos mensais históricos do backtest, do início de {start_label} ao fim de '
+               f'{end_label}, sem custos de transação nem impostos. A linha pontilhada é o montante investido. '
+               'Resultados passados não garantem resultados futuros.')
 
 
 def reset():
