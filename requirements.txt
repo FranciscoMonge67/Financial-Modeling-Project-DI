@@ -1,0 +1,5 @@
+# Testado com Streamlit 1.32, 1.40 e 1.67 (a app adapta-se à versão instalada)
+streamlit>=1.32
+pandas>=1.5
+numpy>=1.24
+plotly>=5.18

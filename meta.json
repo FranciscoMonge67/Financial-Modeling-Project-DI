@@ -1,0 +1,49 @@
+{
+  "synthetic": true,
+  "note": "DADOS SINTÉTICOS DE TESTE: gerados por tools/make_synthetic_data.py, não são resultados do backtest.",
+  "generated_at": "2026-11-26 22:35",
+  "backtest_start": "2011-01-01",
+  "test_start": "2019-01-01",
+  "last_return_month": "2026-10-01",
+  "allocation_month": "2026-11-01",
+  "macro": {
+    "high_inflation": false,
+    "inverted_curve": false
+  },
+  "satellite_stocks": [
+    "AAAA",
+    "BBBB",
+    "CCCC",
+    "DDDD",
+    "EEEE",
+    "FFFF",
+    "GGGG",
+    "HHHH",
+    "IIII",
+    "JJJJ"
+  ],
+  "satellite_size": {
+    "conservative": 0.05,
+    "moderate": 0.1,
+    "aggressive": 0.2
+  },
+  "benchmark_weights": {
+    "conservative": [
+      0.3,
+      0.7
+    ],
+    "moderate": [
+      0.6,
+      0.4
+    ],
+    "aggressive": [
+      0.8,
+      0.2
+    ]
+  },
+  "leverage_cap": {
+    "conservative": 1.0,
+    "moderate": 1.2,
+    "aggressive": 1.5
+  }
+}
